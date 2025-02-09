@@ -1,0 +1,82 @@
+[
+    {
+        "model": "subscriptions.subscriptionservice",
+        "pk": 1,
+        "fields": {
+            "name": "PlayStation Plus",
+            "description": "Выберите подходящую подписку"
+        }
+    },
+    {
+        "model": "subscriptions.subscriptionservice",
+        "pk": 2,
+        "fields": {
+            "name": "EA Play",
+            "description": "Игры по подписке"
+        }
+    },
+    {
+        "model": "subscriptions.subscriptiontier",
+        "pk": 1,
+        "fields": {
+            "name": "Essential",
+            "service": 1,
+            "description": "Базовый уровень PlayStation Plus"
+        }
+    },
+    {
+        "model": "subscriptions.subscriptiontier",
+        "pk": 2,
+        "fields": {
+            "name": "Extra",
+            "service": 1,
+            "description": "Расширенный уровень PlayStation Plus"
+        }
+    },
+    {
+        "model": "subscriptions.subscriptiontier",
+        "pk": 3,
+        "fields": {
+            "name": "Deluxe",
+            "service": 1,
+            "description": "Максимальный уровень PlayStation Plus"
+        }
+    },
+    {
+        "model": "subscriptions.subscriptiontier",
+        "pk": 4,
+        "fields": {
+            "name": "EA Play",
+            "service": 2,
+            "description": "Подписка EA Play"
+        }
+    },
+    {
+        "model": "subscriptions.benefiticon",
+        "pk": 1,
+        "fields": {
+            "name": "multiplayer",
+            "icon_class": "multiplayer-icon"
+        }
+    },
+    {
+        "model": "subscriptions.benefit",
+        "pk": 1,
+        "fields": {
+            "title": "Многопользовательская игра",
+            "benefit_type": "icon",
+            "subscription_tier": 1,
+            "icon": 1
+        }
+    },
+    {
+        "model": "subscriptions.benefit",
+        "pk": 2,
+        "fields": {
+            "title": "Больше игр",
+            "description": "В коллекцию The Play List входит более 20 игр от EA, включая фавориты Need for Speed™, Battlefield™ и другие.",
+            "benefit_type": "detailed",
+            "subscription_tier": 4
+        }
+    }
+]
