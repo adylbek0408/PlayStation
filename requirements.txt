@@ -9,3 +9,4 @@ typing_extensions==4.12.2
 tzdata
 gunicorn
 drf-yasg
+django-jazzmin
