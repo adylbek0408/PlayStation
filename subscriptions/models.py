@@ -29,11 +29,17 @@ class SubscriptionContent(models.Model):
     title = models.CharField(max_length=100)
     icon = models.FileField()
 
+    def __str__(self):
+        return self.title
+
 
 class SubscriptionPeriod(models.Model):
     months = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     subscription_service = models.ForeignKey(SubscriptionService, on_delete=models.CASCADE, related_name="periods")
+
+    def __str__(self):
+        return f"{self.months} - {self.price}"
 
 
 class Subscription(models.Model):
