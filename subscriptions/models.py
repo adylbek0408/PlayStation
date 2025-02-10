@@ -21,7 +21,8 @@ class SubscriptionService(models.Model):
     image = models.FileField()
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.choices_level}"
+
 
 
 class SubscriptionContent(models.Model):
