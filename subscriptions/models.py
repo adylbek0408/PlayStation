@@ -18,7 +18,7 @@ class SubscriptionService(models.Model):
         ('Deluxe', 'Deluxe'),
     )
     choices_level = models.CharField(max_length=70, choices=CHOICES_LEVEL)
-    image = models.ImageField()
+    image = models.FileField()
 
     def __str__(self):
         return self.name
