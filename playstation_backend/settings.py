@@ -63,8 +63,8 @@ WSGI_APPLICATION = 'playstation_backend.wsgi.application'
 CORS_ALLOWED_ORIGINS = [
     "http://91.135.156.149",
     "https://91.135.156.149",
-    "http://localhost:3000",
-    "https://localhost:3000",
+    "http://localhost:3001",
+    "https://localhost:3001",
 
 ]
 
