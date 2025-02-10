@@ -5,7 +5,7 @@ from .serializers import (ConsoleTypeSerializer, SubscriptionServiceSerializer,
                           SubscriptionSerializer)
 
 
-class ConsoleTypeViewSet(viewsets.ModelViewSet):
+class ConsoleTypeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ConsoleType.objects.all()
     serializer_class = ConsoleTypeSerializer
     permission_classes = [IsAdminUser]
