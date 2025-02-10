@@ -10,3 +10,4 @@ tzdata
 gunicorn
 drf-yasg
 django-jazzmin
+django-cors-headers

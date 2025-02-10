@@ -26,9 +26,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'subscriptions',
     'drf_yasg',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -58,6 +60,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'playstation_backend.wsgi.application'
 
+CORS_ALLOWED_ORIGINS = [
+    "http://91.135.156.149",
+    "https://91.135.156.149",
+    "http://localhost:3000",
+    "https://localhost:3000",
+
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 # Database
 
