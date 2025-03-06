@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .auth import CustomAuthToken
 from .views import (
     ConsoleTypeViewSet, SubscriptionServiceViewSet, SubscriptionViewSet,
-    initiate_payment, payment_result, payment_success, payment_fail, user_payments
+    initiate_payment, payment_result, payment_success, payment_fail, user_payments,
+    test_robokassa
 )
 
 router = DefaultRouter()
@@ -22,4 +23,5 @@ urlpatterns = [
     path('payment/success/', payment_success, name='payment_success'),
     path('payment/fail/', payment_fail, name='payment_fail'),
     path('payment/history/', user_payments, name='user_payments'),
+    path('payment/test-robokassa/', test_robokassa, name='test_robokassa'),
 ]
