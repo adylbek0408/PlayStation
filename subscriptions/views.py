@@ -17,6 +17,7 @@ import logging
 import time
 import hashlib
 from urllib.parse import urlencode
+from django.conf import settings
 
 # Получаем логгер
 logger = logging.getLogger(__name__)
