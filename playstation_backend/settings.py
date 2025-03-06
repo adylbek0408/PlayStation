@@ -11,8 +11,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['2.56.178.198']
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 INSTALLED_APPS = [
     'jazzmin',
@@ -65,7 +64,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://91.135.156.149",
     "http://localhost:3001",
     "https://localhost:3001",
-
+    "https://psgamezz.ru"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -150,7 +149,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_ROOT = '/app/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
