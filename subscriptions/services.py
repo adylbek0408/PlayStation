@@ -61,7 +61,7 @@ class RobokassaService:
         logger.info(f"Debug - MD5 hash: {signature}")
         params = {
             'MerchantLogin': merchant_login,
-            'OutSum': amount_str,
+            'OutSum': str(amount).replace(',', '.'),
             'InvId': invoice_id,
             'Description': description,
             'SignatureValue': signature,
