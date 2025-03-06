@@ -1,5 +1,27 @@
 from django.contrib import admin
-from .models import ConsoleType, SubscriptionService, SubscriptionContent, SubscriptionPeriod, Subscription
+from .models import ConsoleType, SubscriptionService, SubscriptionContent, SubscriptionPeriod, Subscription, Payment
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['invoice_id', 'user', 'amount', 'status', 'created_at', 'subscription_service',
+                    'subscription_period']
+    list_filter = ['status', 'subscription_service', 'console_type']
+    search_fields = ['invoice_id', 'user__username', 'description']
+    readonly_fields = ['invoice_id', 'created_at', 'updated_at']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('invoice_id', 'user', 'amount', 'description', 'status')
+        }),
+        ('Подписка', {
+            'fields': ('subscription', 'subscription_service', 'subscription_period', 'console_type')
+        }),
+        ('Даты', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
 
 
 class SubscriptionContentInline(admin.StackedInline):

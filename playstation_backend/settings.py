@@ -106,8 +106,6 @@ CORS_ALLOW_METHODS = [
 ]
 
 
-# Database
-
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
@@ -141,7 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
 
@@ -153,3 +151,14 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+ROBOKASSA_MERCHANT_LOGIN = 'Psgamezz'
+ROBOKASSA_PASSWORD1 = 'yu7gTpqYtZDKJ5X6T49m'
+ROBOKASSA_PASSWORD2 = 'trFcj1mX1fKw47lolhP9'
+ROBOKASSA_TEST_MODE = True
+ROBOKASSA_TEST_PASSWORD1 = 'G6aPODIgpupDIL9y3Qq9'
+ROBOKASSA_TEST_PASSWORD2 = 'X73rYXxKeF9XTvB2Rqb6'
+
+ROBOKASSA_RESULT_URL = 'https://psgamezz.ru/api/payment/result/'
+ROBOKASSA_SUCCESS_URL = 'https://psgamezz.ru/payment/success/'
+ROBOKASSA_FAIL_URL = 'https://psgamezz.ru/payment/fail/'
