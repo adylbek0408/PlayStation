@@ -8,10 +8,11 @@ from django.shortcuts import redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .services import RobokassaService
 from .models import SubscriptionService, SubscriptionPeriod, ConsoleType, Payment
+from django.contrib.auth.models import User
 
 
 @api_view(['POST'])
@@ -26,13 +27,16 @@ def initiate_payment(request):
         subscription_service = get_object_or_404(SubscriptionService, id=subscription_service_id)
         subscription_period = get_object_or_404(SubscriptionPeriod, id=subscription_period_id)
         console_type = get_object_or_404(ConsoleType, id=console_type_id)
+
         payment = RobokassaService.create_payment(
             user=request.user,
             subscription_service=subscription_service,
             subscription_period=subscription_period,
             console_type=console_type
         )
+
         payment_url = RobokassaService.get_payment_url(payment)
+
         return Response({'payment_url': payment_url, 'invoice_id': payment.invoice_id})
 
     except Exception as e:
@@ -43,9 +47,12 @@ def initiate_payment(request):
 @require_POST
 def payment_result(request):
     data = request.POST.dict()
+
     if not RobokassaService.check_signature(data):
         return HttpResponse("Неверная подпись", status=400)
+
     success, message = RobokassaService.process_payment(data)
+
     if success:
         return HttpResponse("OK")
     else:
@@ -53,6 +60,7 @@ def payment_result(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def payment_success(request):
     inv_id = request.GET.get('InvId')
 
@@ -81,11 +89,13 @@ def payment_success(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def payment_fail(request):
     inv_id = request.GET.get('InvId')
 
     try:
         payment = get_object_or_404(Payment, invoice_id=inv_id)
+
         if payment.status != 'failed':
             payment.status = 'failed'
             payment.save()
@@ -111,6 +121,7 @@ def payment_fail(request):
 @permission_classes([IsAuthenticated])
 def user_payments(request):
     payments = Payment.objects.filter(user=request.user).order_by('-created_at')
+
     result = []
     for payment in payments:
         result.append({
