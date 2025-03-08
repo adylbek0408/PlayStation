@@ -6,7 +6,7 @@ from .serializers import (ConsoleTypeSerializer, SubscriptionServiceSerializer,
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+# Удаляем require_POST
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -75,11 +75,18 @@ def initiate_payment(request):
 
 
 @csrf_exempt
-@require_POST
+# Убираем декоратор @require_POST для поддержки GET запросов
 def payment_result(request):
     logger.info(f"=== ПОЛУЧЕНО УВЕДОМЛЕНИЕ ОТ РОБОКАССЫ ===")
-    logger.info(f"Request data: {request.POST.dict()}")
-    data = request.POST.dict()
+    # Получаем данные в зависимости от метода запроса
+    if request.method == 'POST':
+        data = request.POST.dict()
+        logger.info(f"Method: POST")
+    else:
+        data = request.GET.dict()
+        logger.info(f"Method: GET")
+
+    logger.info(f"Request data: {data}")
 
     if not RobokassaService.check_signature(data):
         logger.error("Invalid signature from Robokassa")

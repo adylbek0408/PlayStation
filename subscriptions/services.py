@@ -117,6 +117,10 @@ class RobokassaService:
         logger.info(f"Verifying signature. OutSum: {out_sum}, InvId: {inv_id}")
         logger.info(f"Received signature: {received_signature}")
 
+        if not received_signature:
+            logger.error("No signature received")
+            return False
+
         shp_params = {}
         for key, value in request_data.items():
             if key.startswith('Shp_'):
