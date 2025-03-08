@@ -117,6 +117,11 @@ class RobokassaService:
         logger.info(f"Verifying signature. OutSum: {out_sum}, InvId: {inv_id}")
         logger.info(f"Received signature: {received_signature}")
 
+        # Проверка наличия обязательных параметров
+        if not all([out_sum, inv_id, received_signature]):
+            logger.error("Missing required parameters for signature verification")
+            return False
+
         shp_params = {}
         for key, value in request_data.items():
             if key.startswith('Shp_'):
@@ -137,6 +142,7 @@ class RobokassaService:
         calculated_signature = hashlib.md5(signature_string.encode()).hexdigest().lower()
         logger.info(f"Calculated signature: {calculated_signature}")
 
+        # Сравниваем подписи без учета регистра
         result = calculated_signature == received_signature.lower()
         logger.info(f"Signature match: {result}")
         logger.info(f"=== КОНЕЦ ПРОВЕРКИ ПОДПИСИ ===")

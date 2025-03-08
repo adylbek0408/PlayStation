@@ -19,7 +19,6 @@ import hashlib
 from urllib.parse import urlencode
 from django.conf import settings
 
-# Получаем логгер
 logger = logging.getLogger(__name__)
 
 
@@ -75,11 +74,17 @@ def initiate_payment(request):
 
 
 @csrf_exempt
-@require_POST
 def payment_result(request):
     logger.info(f"=== ПОЛУЧЕНО УВЕДОМЛЕНИЕ ОТ РОБОКАССЫ ===")
-    logger.info(f"Request data: {request.POST.dict()}")
-    data = request.POST.dict()
+
+    # Получаем данные в зависимости от метода запроса
+    if request.method == 'POST':
+        data = request.POST.dict()
+    else:  # GET
+        data = request.GET.dict()
+
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Request data: {data}")
 
     if not RobokassaService.check_signature(data):
         logger.error("Invalid signature from Robokassa")
