@@ -230,7 +230,7 @@ def test_robokassa(request):
         password = settings.ROBOKASSA_TEST_PASSWORD1 if settings.ROBOKASSA_TEST_MODE else settings.ROBOKASSA_PASSWORD1
 
         invoice_id = str(int(time.time()) % 2147483647)
-        amount = "10.00"
+        amount = "1000.00"
         description = "Тестовый платеж"
 
         logger.info(f"MerchantLogin: {merchant_login}")
