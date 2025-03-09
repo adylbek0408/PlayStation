@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class RobokassaService:
     @staticmethod
     def generate_invoice_id():
-        return str(uuid.uuid4().hex)[:20]
+        return str(int(time.time() * 1000))[-9:]
 
     @staticmethod
     def get_payment_url(payment):
