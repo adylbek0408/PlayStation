@@ -30,7 +30,7 @@ def minimal_robokassa_test(request):
     """
     try:
         # Базовые параметры (минимально необходимые)
-        merchant_login = "Psgamezz"  # Hardcoded для теста
+        merchant_login = "PSGAMEZZ.RU"  # Исправлено! Используем точный идентификатор из ЛК
         test_password = "G6aPODIgpupDIL9y3Qq9"  # Тестовый пароль #1
 
         # Числовой ID заказа
@@ -264,33 +264,20 @@ def user_payments(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def test_robokassa(request):
-    """
-    Тестовый эндпоинт для проверки Робокассы с минимальными параметрами
-    """
-    logger.info("=== ТЕСТОВЫЙ ЗАПРОС К РОБОКАССЕ ===")
-
     try:
         # Базовые параметры
-        merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN
+        merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN  # Теперь будет использовать исправленное значение
         password = settings.ROBOKASSA_TEST_PASSWORD1 if settings.ROBOKASSA_TEST_MODE else settings.ROBOKASSA_PASSWORD1
 
-        # Генерируем только числовой invoice_id для теста
+        # Числовой ID
         invoice_id = str(int(time.time()) % 2147483647)
         amount = "10.00"
         description = "Тестовый платеж"
 
-        logger.info(f"MerchantLogin: {merchant_login}")
-        logger.info(f"OutSum: {amount}")
-        logger.info(f"InvId: {invoice_id}")
-
-        # Простая подпись без Shp_ параметров
+        # Подпись
         signature_value = f"{merchant_login}:{amount}:{invoice_id}:{password}"
-        logger.info(f"Signature string: {signature_value}")
-
         signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest()
-        logger.info(f"MD5 hash: {signature}")
 
-        # Минимальный набор параметров
         params = {
             'MerchantLogin': merchant_login,
             'OutSum': amount,
@@ -301,22 +288,14 @@ def test_robokassa(request):
             'Culture': 'ru',
         }
 
-        logger.info(f"All params: {params}")
-
-        # Формирование URL
         base_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
         final_url = f"{base_url}?{urlencode(params)}"
-
-        logger.info(f"Final URL: {final_url}")
-        logger.info("=== КОНЕЦ ТЕСТОВОГО ЗАПРОСА ===")
 
         return Response({
             'test_url': final_url,
             'params': params
         })
     except Exception as e:
-        logger.error(f"Error during test: {str(e)}")
-        logger.exception(e)
         return Response({'error': str(e)}, status=500)
 
 
