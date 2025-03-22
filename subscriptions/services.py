@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 class RobokassaService:
     @staticmethod
     def generate_invoice_id():
-        return str(int(time.time() * 1000))[-9:]
+        # Возвращаем целое число вместо строки
+        return str(int(time.time()) % 2147483647)  # Возвращаем строковое представление целого числа
 
     @staticmethod
     def get_payment_url(payment):
@@ -43,11 +44,10 @@ class RobokassaService:
         logger.info(f"Using test mode: {settings.ROBOKASSA_TEST_MODE}")
 
         # Форматирование суммы (строго в формате с точкой)
-        amount_str = str(amount).replace(',', '.')
+        amount_str = str(float(amount)).replace(',', '.')
         logger.info(f"Formatted OutSum: {amount_str}")
 
         # Формирование базовой строки для подписи БЕЗ Shp_ параметров
-        # Это ключевое изменение - не включаем Shp-параметры в исходную подпись
         signature_value = f"{merchant_login}:{amount_str}:{invoice_id}:{password}"
         logger.info(f"Base signature string: {signature_value}")
 
@@ -114,6 +114,7 @@ class RobokassaService:
             logger.error("Missing required parameters for signature verification")
             return False
 
+        # Выделяем Shp-параметры
         shp_params = {}
         for key, value in request_data.items():
             if key.startswith('Shp_'):
@@ -121,17 +122,19 @@ class RobokassaService:
 
         logger.info(f"Received Shp params: {shp_params}")
 
+        # Базовая строка подписи для результата (без Shp-параметров)
         signature_string = f"{out_sum}:{inv_id}:{password}"
         base_signature = signature_string
         logger.info(f"Base signature string for checking: {base_signature}")
 
+        # Добавляем Shp-параметры в алфавитном порядке
         sorted_shp_params = sorted(shp_params.items())
         for key, value in sorted_shp_params:
             signature_string += f":{key}={value}"
 
         logger.info(f"Full signature string for checking: {signature_string}")
 
-        calculated_signature = hashlib.md5(signature_string.encode()).hexdigest().lower()
+        calculated_signature = hashlib.md5(signature_string.encode('utf-8')).hexdigest().lower()
         logger.info(f"Calculated signature: {calculated_signature}")
 
         # Сравниваем подписи без учета регистра

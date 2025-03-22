@@ -229,6 +229,7 @@ def test_robokassa(request):
         merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN
         password = settings.ROBOKASSA_TEST_PASSWORD1 if settings.ROBOKASSA_TEST_MODE else settings.ROBOKASSA_PASSWORD1
 
+        # Генерируем только числовой invoice_id для теста
         invoice_id = str(int(time.time()) % 2147483647)
         amount = "1000.00"
         description = "Тестовый платеж"
@@ -241,7 +242,7 @@ def test_robokassa(request):
         signature_value = f"{merchant_login}:{amount}:{invoice_id}:{password}"
         logger.info(f"Signature string: {signature_value}")
 
-        signature = hashlib.md5(signature_value.encode()).hexdigest()
+        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest()
         logger.info(f"MD5 hash: {signature}")
 
         # Минимальный набор параметров
@@ -251,7 +252,7 @@ def test_robokassa(request):
             'InvId': invoice_id,
             'Description': description,
             'SignatureValue': signature,
-            'IsTest': 1,
+            'IsTest': 1 if settings.ROBOKASSA_TEST_MODE else 0,
             'Culture': 'ru',
         }
 
