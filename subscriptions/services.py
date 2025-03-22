@@ -42,34 +42,17 @@ class RobokassaService:
         logger.info(f"Description: {description}")
         logger.info(f"Using test mode: {settings.ROBOKASSA_TEST_MODE}")
 
-        # Форматирование суммы
+        # Форматирование суммы (строго в формате с точкой)
         amount_str = str(amount).replace(',', '.')
         logger.info(f"Formatted OutSum: {amount_str}")
 
-        # Формирование базовой строки для подписи
+        # Формирование базовой строки для подписи БЕЗ Shp_ параметров
+        # Это ключевое изменение - не включаем Shp-параметры в исходную подпись
         signature_value = f"{merchant_login}:{amount_str}:{invoice_id}:{password}"
         logger.info(f"Base signature string: {signature_value}")
 
-        shp_params = {
-            'Shp_user_id': payment.user.id,
-            'Shp_subscription_service': payment.subscription_service.id,
-            'Shp_subscription_period': payment.subscription_period.id,
-            'Shp_console_type': payment.console_type.id,
-        }
-        logger.info(f"Shp params: {shp_params}")
-
-        # Сортировка и добавление Shp_ параметров
-        sorted_shp_params = sorted(shp_params.items())
-        logger.info(f"Sorted Shp params: {sorted_shp_params}")
-
-        full_signature = signature_value
-        for key, value in sorted_shp_params:
-            full_signature += f":{key}={value}"
-
-        logger.info(f"Full signature string: {full_signature}")
-
         # Вычисление подписи
-        signature = hashlib.md5(full_signature.encode()).hexdigest()
+        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest()
         logger.info(f"MD5 hash: {signature}")
 
         # Подготовка параметров запроса
@@ -82,7 +65,16 @@ class RobokassaService:
             'IsTest': 1 if settings.ROBOKASSA_TEST_MODE else 0,
             'Culture': 'ru',
         }
+
+        # Добавляем Shp_ параметры ПОСЛЕ вычисления подписи
+        shp_params = {
+            'Shp_user_id': payment.user.id,
+            'Shp_subscription_service': payment.subscription_service.id,
+            'Shp_subscription_period': payment.subscription_period.id,
+            'Shp_console_type': payment.console_type.id,
+        }
         params.update(shp_params)
+
         logger.info(f"All request params: {params}")
 
         # Формирование URL
