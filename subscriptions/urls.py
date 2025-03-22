@@ -5,7 +5,7 @@ from .auth import CustomAuthToken
 from .views import (
     ConsoleTypeViewSet, SubscriptionServiceViewSet, SubscriptionViewSet,
     initiate_payment, payment_result, payment_success, payment_fail, user_payments,
-    test_robokassa, minimal_robokassa_test  # Импортируем новую функцию
+    test_robokassa, minimal_robokassa_test
 )
 
 router = DefaultRouter()
@@ -24,5 +24,5 @@ urlpatterns = [
     path('payment/fail/', payment_fail, name='payment_fail'),
     path('payment/history/', user_payments, name='user_payments'),
     path('payment/test-robokassa/', test_robokassa, name='test_robokassa'),
-    path('payment/minimal-robokassa-test/', minimal_robokassa_test, name='minimal_robokassa_test'),  # Новый маршрут
+    path('payment/minimal-robokassa-test/', minimal_robokassa_test, name='minimal_robokassa_test'),
 ]
