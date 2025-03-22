@@ -20,8 +20,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('subscriptions.urls')),
 
-    path('payment/success/', payment_success, name='direct_payment_success'),
-    path('payment/fail/', payment_fail, name='direct_payment_fail'),
+    # Применяем csrf_exempt к обработчикам платежей
+    path('payment/success/', csrf_exempt(payment_success), name='direct_payment_success'),
+    path('payment/fail/', csrf_exempt(payment_fail), name='direct_payment_fail'),
+
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0)),
 ]

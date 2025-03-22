@@ -6,64 +6,240 @@ from .serializers import (ConsoleTypeSerializer, SubscriptionServiceSerializer,
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from .services import RobokassaService
+from .services import RobokassaService, logger
 from .models import SubscriptionService, SubscriptionPeriod, ConsoleType, Payment
 from django.contrib.auth.models import User
-import logging
 import time
 import hashlib
 from urllib.parse import urlencode
 from django.conf import settings
-
-logger = logging.getLogger(__name__)
+import requests
+import json
 
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def minimal_robokassa_test(request):
+def compare_logins_test(request):
     """
-    Максимально упрощенный тест Робокассы без дополнительных параметров
+    Сравнивает два разных варианта логина: PSGAMEZZ.RU и Psgamezz
     """
+    logger.info("=== ТЕСТ СРАВНЕНИЯ ЛОГИНОВ ===")
+
     try:
-        # Базовые параметры (минимально необходимые)
-        merchant_login = "PSGAMEZZ.RU"  # Исправлено! Используем точный идентификатор из ЛК
-        test_password = "G6aPODIgpupDIL9y3Qq9"  # Тестовый пароль #1
-
-        # Числовой ID заказа
-        inv_id = str(int(time.time()))
-        # Сумма заказа (2 знака после запятой)
+        # Общие параметры для тестов
+        inv_id = str(int(time.time()) % 100000)
         out_sum = "10.00"
+        description = "Тест логинов"
+        test_password = settings.ROBOKASSA_TEST_PASSWORD1
 
-        # Формирование подписи (без доп. параметров)
-        signature_string = f"{merchant_login}:{out_sum}:{inv_id}:{test_password}"
-        signature = hashlib.md5(signature_string.encode('utf-8')).hexdigest()
+        # Вариант 1: PSGAMEZZ.RU (верхний регистр с доменом)
+        login1 = "PSGAMEZZ.RU"
+        signature_value1 = f"{login1}:{out_sum}:{inv_id}:{test_password}"
+        signature1 = hashlib.md5(signature_value1.encode('utf-8')).hexdigest().lower()
 
-        # Базовые параметры для URL
-        params = {
-            'MerchantLogin': merchant_login,
+        # Вариант 2: Psgamezz (смешанный регистр без домена)
+        login2 = "Psgamezz"
+        signature_value2 = f"{login2}:{out_sum}:{inv_id}:{test_password}"
+        signature2 = hashlib.md5(signature_value2.encode('utf-8')).hexdigest().lower()
+
+        # Формируем URL для обоих вариантов
+        base_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
+
+        # URL для варианта 1
+        params1 = {
+            'MerchantLogin': login1,
             'OutSum': out_sum,
             'InvId': inv_id,
-            'Description': "Тестовый платеж",
-            'SignatureValue': signature,
+            'Description': description,
+            'SignatureValue': signature1,
             'IsTest': 1,
-            'Culture': 'ru'
+            'Culture': 'ru',
         }
+        url1 = f"{base_url}?{urlencode(params1)}"
 
-        # Формирование URL
-        base_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
-        payment_url = f"{base_url}?{urlencode(params)}"
+        # URL для варианта 2
+        params2 = {
+            'MerchantLogin': login2,
+            'OutSum': out_sum,
+            'InvId': inv_id,
+            'Description': description,
+            'SignatureValue': signature2,
+            'IsTest': 1,
+            'Culture': 'ru',
+        }
+        url2 = f"{base_url}?{urlencode(params2)}"
+
+        # Проверяем оба URL через GET-запросы
+        logger.info(f"Тестирование URL с логином 1 (PSGAMEZZ.RU): {url1}")
+        try:
+            response1 = requests.get(url1, allow_redirects=False)
+            status1 = response1.status_code
+            logger.info(f"Статус ответа для логина 1: {status1}")
+
+            # Если получили редирект, значит URL принят
+            if status1 == 302:
+                redirect1 = response1.headers.get('Location', '')
+                logger.info(f"URL с логином 1 принят, редирект на: {redirect1}")
+                result1 = "Успешно (редирект)"
+            else:
+                # Попробуем определить наличие ошибки в ответе
+                if "ошибки: 23" in response1.text:
+                    result1 = "Ошибка 23 (неверный формат параметров)"
+                elif "ошибки: 29" in response1.text:
+                    result1 = "Ошибка 29 (неверный параметр Signature)"
+                else:
+                    result1 = f"Ошибка (статус {status1})"
+        except Exception as e:
+            logger.error(f"Ошибка при тестировании URL с логином 1: {str(e)}")
+            result1 = f"Ошибка запроса: {str(e)}"
+
+        logger.info(f"Тестирование URL с логином 2 (Psgamezz): {url2}")
+        try:
+            response2 = requests.get(url2, allow_redirects=False)
+            status2 = response2.status_code
+            logger.info(f"Статус ответа для логина 2: {status2}")
+
+            # Если получили редирект, значит URL принят
+            if status2 == 302:
+                redirect2 = response2.headers.get('Location', '')
+                logger.info(f"URL с логином 2 принят, редирект на: {redirect2}")
+                result2 = "Успешно (редирект)"
+            else:
+                # Попробуем определить наличие ошибки в ответе
+                if "ошибки: 23" in response2.text:
+                    result2 = "Ошибка 23 (неверный формат параметров)"
+                elif "ошибки: 29" in response2.text:
+                    result2 = "Ошибка 29 (неверный параметр Signature)"
+                else:
+                    result2 = f"Ошибка (статус {status2})"
+        except Exception as e:
+            logger.error(f"Ошибка при тестировании URL с логином 2: {str(e)}")
+            result2 = f"Ошибка запроса: {str(e)}"
+
+        logger.info(f"Результат сравнения логинов:")
+        logger.info(f"Логин 1 (PSGAMEZZ.RU): {result1}")
+        logger.info(f"Логин 2 (Psgamezz): {result2}")
+        logger.info(f"=== КОНЕЦ ТЕСТА СРАВНЕНИЯ ЛОГИНОВ ===")
 
         return Response({
-            'test_url': payment_url,
-            'params': params,
-            'signature_string': signature_string
+            'login1': login1,
+            'login1_signature': signature_value1,
+            'login1_url': url1,
+            'login1_result': result1,
+
+            'login2': login2,
+            'login2_signature': signature_value2,
+            'login2_url': url2,
+            'login2_result': result2,
+
+            'conclusion': "Используйте тот вариант логина, который дал лучший результат."
         })
 
     except Exception as e:
+        logger.error(f"Ошибка в тесте сравнения логинов: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_minimal_connection(request):
+    """
+    Максимально простой тест связи с Робокассой, без лишних параметров
+    """
+    logger.info("=== МИНИМАЛЬНЫЙ ТЕСТ СВЯЗИ С РОБОКАССОЙ ===")
+
+    try:
+        # Тестируем базовое соединение с сайтом Робокассы
+        url = "https://auth.robokassa.ru/Merchant/Index.aspx"
+        logger.info(f"Тестирование базового URL: {url}")
+
+        response = requests.get(url)
+        logger.info(f"Ответ от сервера: {response.status_code}")
+
+        # Результат теста
+        return Response({
+            'status': 'success',
+            'message': f"Соединение с Робокассой установлено, статус: {response.status_code}",
+            'can_connect': True
+        })
+    except Exception as e:
+        logger.error(f"Ошибка при тестировании связи с Робокассой: {str(e)}")
+        return Response({
+            'status': 'error',
+            'message': f"Ошибка при подключении к Робокассе: {str(e)}",
+            'can_connect': False
+        }, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_payment_with_both_logins(request):
+    """
+    Сверхпростой тест для создания платежа с обоими вариантами логина
+    """
+    logger.info("=== ТЕСТ СОЗДАНИЯ ПЛАТЕЖА С ОБОИМИ ЛОГИНАМИ ===")
+
+    try:
+        # Создаем тестовую модель платежа
+        class TestPayment:
+            def __init__(self):
+                self.invoice_id = str(int(time.time()) % 100000)
+                self.amount = "10.00"
+                self.description = "Тестовый платеж"
+                self.user = type('obj', (object,), {'id': 1})
+                self.subscription_service = type('obj', (object,), {'id': 1})
+                self.subscription_period = type('obj', (object,), {'id': 1})
+                self.console_type = type('obj', (object,), {'id': 1})
+
+        test_payment = TestPayment()
+
+        # Тестируем оба варианта логина
+        url1 = RobokassaService.get_payment_url(test_payment, merchant_login="PSGAMEZZ.RU")
+        url2 = RobokassaService.get_payment_url(test_payment, merchant_login="Psgamezz")
+
+        logger.info(f"URL с логином PSGAMEZZ.RU: {url1}")
+        logger.info(f"URL с логином Psgamezz: {url2}")
+
+        # Проверяем оба URL
+        try:
+            response1 = requests.get(url1, allow_redirects=False)
+            status1 = response1.status_code
+            if status1 == 302:
+                result1 = "Успешно (редирект)"
+            else:
+                result1 = f"Ошибка (статус {status1})"
+        except Exception as e:
+            result1 = f"Ошибка запроса: {str(e)}"
+
+        try:
+            response2 = requests.get(url2, allow_redirects=False)
+            status2 = response2.status_code
+            if status2 == 302:
+                result2 = "Успешно (редирект)"
+            else:
+                result2 = f"Ошибка (статус {status2})"
+        except Exception as e:
+            result2 = f"Ошибка запроса: {str(e)}"
+
+        logger.info(f"Результат для логина PSGAMEZZ.RU: {result1}")
+        logger.info(f"Результат для логина Psgamezz: {result2}")
+        logger.info(f"=== КОНЕЦ ТЕСТА СОЗДАНИЯ ПЛАТЕЖА ===")
+
+        return Response({
+            'payment_id': test_payment.invoice_id,
+            'amount': test_payment.amount,
+            'description': test_payment.description,
+            'url1': url1,
+            'result1': result1,
+            'url2': url2,
+            'result2': result2
+        })
+    except Exception as e:
+        logger.error(f"Ошибка в тесте создания платежа: {str(e)}")
         return Response({'error': str(e)}, status=500)
 
 
@@ -119,6 +295,7 @@ def initiate_payment(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET", "POST"])
 def payment_result(request):
     logger.info(f"=== ПОЛУЧЕНО УВЕДОМЛЕНИЕ ОТ РОБОКАССЫ ===")
 
@@ -130,6 +307,7 @@ def payment_result(request):
 
     logger.info(f"Request method: {request.method}")
     logger.info(f"Request data: {data}")
+    logger.info(f"Request headers: {dict(request.headers)}")
 
     if not RobokassaService.check_signature(data):
         logger.error("Invalid signature from Robokassa")
@@ -147,89 +325,102 @@ def payment_result(request):
         return HttpResponse(message, status=400)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def payment_success(request):
+    """
+    Обработчик успешного платежа
+    """
     logger.info(f"=== СТРАНИЦА УСПЕШНОЙ ОПЛАТЫ ===")
-    logger.info(f"Request params: {request.GET}")
-    inv_id = request.GET.get('InvId')
+    logger.info(f"Request method: {request.method}")
+
+    # Получаем данные в зависимости от метода запроса
+    if request.method == 'POST':
+        data = request.POST
+    else:  # GET
+        data = request.GET
+
+    logger.info(f"Request data: {data}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+
+    inv_id = data.get('InvId')
     logger.info(f"Invoice ID: {inv_id}")
 
-    try:
-        payment = get_object_or_404(Payment, invoice_id=inv_id)
-        logger.info(f"Found payment: {payment}")
-        logger.info(f"Payment status: {payment.status}")
+    # Простой HTML-ответ
+    html_response = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Платеж успешно завершен</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+            .success { color: green; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="success">Платеж успешно завершен!</h1>
+            <p>Спасибо за ваш заказ. Ваша подписка активирована.</p>
+            <p>Номер заказа: {}</p>
+            <p><a href="https://psgamezz.ru/">Вернуться на главную</a></p>
+        </div>
+    </body>
+    </html>
+    """.format(inv_id)
 
-        if payment.status != 'success':
-            logger.info("Payment is pending, waiting for status update")
-            return Response({
-                'status': 'pending',
-                'message': 'Платеж обрабатывается. Пожалуйста, подождите.'
-            })
-
-        logger.info("Returning success response")
-        logger.info(f"=== КОНЕЦ СТРАНИЦЫ УСПЕШНОЙ ОПЛАТЫ ===")
-        return Response({
-            'status': 'success',
-            'message': 'Платеж успешно завершен',
-            'subscription': {
-                'service': payment.subscription_service.name,
-                'level': payment.subscription_service.choices_level,
-                'period': f"{payment.subscription_period.months} месяцев",
-                'price': str(payment.amount)
-            }
-        })
-
-    except Payment.DoesNotExist:
-        logger.error(f"Payment with ID {inv_id} not found")
-        logger.info(f"=== ОШИБКА СТРАНИЦЫ УСПЕШНОЙ ОПЛАТЫ ===")
-        return Response({'error': 'Платеж не найден'}, status=404)
-    except Exception as e:
-        logger.error(f"Error processing success page: {str(e)}")
-        logger.exception(e)
-        logger.info(f"=== ОШИБКА СТРАНИЦЫ УСПЕШНОЙ ОПЛАТЫ ===")
-        return Response({'error': str(e)}, status=500)
+    return HttpResponse(html_response)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def payment_fail(request):
+    """
+    Обработчик неудачного платежа
+    """
     logger.info(f"=== СТРАНИЦА НЕУДАЧНОЙ ОПЛАТЫ ===")
-    logger.info(f"Request params: {request.GET}")
-    inv_id = request.GET.get('InvId')
+    logger.info(f"Request method: {request.method}")
+
+    # Получаем данные в зависимости от метода запроса
+    if request.method == 'POST':
+        data = request.POST
+    else:  # GET
+        data = request.GET
+
+    logger.info(f"Request data: {data}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+
+    inv_id = data.get('InvId')
     logger.info(f"Invoice ID: {inv_id}")
 
-    try:
-        payment = get_object_or_404(Payment, invoice_id=inv_id)
-        logger.info(f"Found payment: {payment}")
+    # Простой HTML-ответ
+    html_response = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Платеж не завершен</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+            .error { color: #cc0000; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="error">Платеж не был завершен</h1>
+            <p>К сожалению, произошла ошибка при обработке вашего платежа.</p>
+            <p>Вы можете попробовать повторить попытку оплаты или связаться с нашей службой поддержки.</p>
+            <p><a href="https://psgamezz.ru/">Вернуться на главную</a></p>
+        </div>
+    </body>
+    </html>
+    """
 
-        if payment.status != 'failed':
-            logger.info(f"Updating payment status to failed")
-            payment.status = 'failed'
-            payment.save()
-
-        logger.info("Returning failed payment response")
-        logger.info(f"=== КОНЕЦ СТРАНИЦЫ НЕУДАЧНОЙ ОПЛАТЫ ===")
-        return Response({
-            'status': 'failed',
-            'message': 'Оплата не была произведена',
-            'subscription': {
-                'service': payment.subscription_service.name,
-                'level': payment.subscription_service.choices_level,
-                'period': f"{payment.subscription_period.months} месяцев",
-                'price': str(payment.amount)
-            }
-        })
-
-    except Payment.DoesNotExist:
-        logger.error(f"Payment with ID {inv_id} not found")
-        logger.info(f"=== ОШИБКА СТРАНИЦЫ НЕУДАЧНОЙ ОПЛАТЫ ===")
-        return Response({'error': 'Платеж не найден'}, status=404)
-    except Exception as e:
-        logger.error(f"Error processing fail page: {str(e)}")
-        logger.exception(e)
-        logger.info(f"=== ОШИБКА СТРАНИЦЫ НЕУДАЧНОЙ ОПЛАТЫ ===")
-        return Response({'error': str(e)}, status=500)
+    return HttpResponse(html_response)
 
 
 @api_view(['GET'])
@@ -264,20 +455,34 @@ def user_payments(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def test_robokassa(request):
+    """
+    Тестовый эндпоинт для проверки Робокассы с минимальными параметрами
+    """
+    logger.info("=== ТЕСТОВЫЙ ЗАПРОС К РОБОКАССЕ ===")
+
     try:
         # Базовые параметры
-        merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN  # Теперь будет использовать исправленное значение
+        merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN
         password = settings.ROBOKASSA_TEST_PASSWORD1 if settings.ROBOKASSA_TEST_MODE else settings.ROBOKASSA_PASSWORD1
 
-        # Числовой ID
-        invoice_id = str(int(time.time()) % 2147483647)
-        amount = "10.00"
+        # Генерируем только числовой invoice_id для теста
+        invoice_id = str(int(time.time()) % 100000)  # Ограничиваем длину
+        amount = "10.00"  # Строго в таком формате
         description = "Тестовый платеж"
 
-        # Подпись
-        signature_value = f"{merchant_login}:{amount}:{invoice_id}:{password}"
-        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest()
+        logger.info(f"MerchantLogin: {merchant_login}")
+        logger.info(f"OutSum: {amount}")
+        logger.info(f"InvId: {invoice_id}")
+        logger.info(f"Password: {password[:3]}...{password[-3:]}")
 
+        # Простая подпись без Shp_ параметров
+        signature_value = f"{merchant_login}:{amount}:{invoice_id}:{password}"
+        logger.info(f"Signature string: {signature_value}")
+
+        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest().lower()
+        logger.info(f"MD5 hash: {signature}")
+
+        # Минимальный набор параметров
         params = {
             'MerchantLogin': merchant_login,
             'OutSum': amount,
@@ -288,14 +493,44 @@ def test_robokassa(request):
             'Culture': 'ru',
         }
 
+        logger.info(f"All params: {params}")
+
+        # Формирование URL
         base_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
         final_url = f"{base_url}?{urlencode(params)}"
 
+        logger.info(f"Final URL: {final_url}")
+
+        # Попробуем сразу проверить URL
+        try:
+            response = requests.get(final_url, allow_redirects=False)
+            status = response.status_code
+            logger.info(f"Test request status: {status}")
+            if status == 302:
+                test_result = "Успешно (редирект)"
+                redirect_url = response.headers.get('Location', '')
+                logger.info(f"Redirect URL: {redirect_url}")
+            else:
+                test_result = f"Ошибка (статус {status})"
+                if "ошибки: " in response.text:
+                    error_code = response.text.split("ошибки: ")[1].split(" ")[0]
+                    test_result = f"Ошибка {error_code}"
+        except Exception as e:
+            test_result = f"Ошибка запроса: {str(e)}"
+            logger.error(f"Error testing URL: {str(e)}")
+
+        logger.info(f"Test result: {test_result}")
+        logger.info("=== КОНЕЦ ТЕСТОВОГО ЗАПРОСА ===")
+
         return Response({
             'test_url': final_url,
-            'params': params
+            'params': params,
+            'signature_string': signature_value,
+            'test_result': test_result
         })
     except Exception as e:
+        logger.error(f"Error during test: {str(e)}")
+        logger.exception(e)
         return Response({'error': str(e)}, status=500)
 
 

@@ -2,6 +2,7 @@ import hashlib
 import uuid
 import sys
 import time
+import os
 from urllib.parse import urlencode
 from django.conf import settings
 from django.urls import reverse
@@ -10,27 +11,48 @@ from .models import Payment, Subscription
 import logging
 from datetime import datetime
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Настройка расширенного логирования
+log_dir = os.path.expanduser('~/robokassa_logs')
+os.makedirs(log_dir, exist_ok=True)
+
+# Настраиваем файловый хендлер
+file_handler = logging.FileHandler(os.path.join(log_dir, f'robokassa_debug_{datetime.now().strftime("%Y%m%d")}.log'))
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+
+# Настраиваем консольный хендлер
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+
+# Настраиваем логгер
+logger = logging.getLogger('robokassa')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+logger.propagate = False
 
 
 class RobokassaService:
     @staticmethod
     def generate_invoice_id():
-        # Возвращаем целое число вместо строки
-        return str(int(time.time()) % 2147483647)  # Возвращаем строковое представление целого числа
+        """Генерирует короткий числовой ID заказа"""
+        invoice_id = str(int(time.time()) % 100000)  # Максимум 5 цифр
+        logger.debug(f"Сгенерирован InvId: {invoice_id}")
+        return invoice_id
 
     @staticmethod
-    def get_payment_url(payment):
+    def get_payment_url(payment, merchant_login=None):
+        """
+        Формирует URL для оплаты
+        Можно опционально передать merchant_login для тестирования разных вариантов
+        """
         logger.info(f"=== НАЧАЛО СОЗДАНИЯ ПЛАТЕЖНОГО URL ===")
-        merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN
+
+        # Используем переданный merchant_login или берем из настроек
+        if merchant_login is None:
+            merchant_login = settings.ROBOKASSA_MERCHANT_LOGIN
+
         password = settings.ROBOKASSA_TEST_PASSWORD1 if settings.ROBOKASSA_TEST_MODE else settings.ROBOKASSA_PASSWORD1
 
         invoice_id = payment.invoice_id
@@ -40,19 +62,20 @@ class RobokassaService:
         logger.info(f"MerchantLogin: {merchant_login}")
         logger.info(f"OutSum (raw): {amount} (type: {type(amount)})")
         logger.info(f"InvId: {invoice_id}")
+        logger.info(f"Password1: {password[:3]}...{password[-3:]}")
         logger.info(f"Description: {description}")
         logger.info(f"Using test mode: {settings.ROBOKASSA_TEST_MODE}")
 
-        # Форматирование суммы (строго в формате с точкой)
-        amount_str = str(float(amount)).replace(',', '.')
+        # Форматирование суммы (строго в формате с точкой и двумя знаками)
+        amount_str = f"{float(amount):.2f}".replace(',', '.')
         logger.info(f"Formatted OutSum: {amount_str}")
 
         # Формирование базовой строки для подписи БЕЗ Shp_ параметров
         signature_value = f"{merchant_login}:{amount_str}:{invoice_id}:{password}"
         logger.info(f"Base signature string: {signature_value}")
 
-        # Вычисление подписи
-        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest()
+        # Вычисление подписи (в нижнем регистре!)
+        signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest().lower()
         logger.info(f"MD5 hash: {signature}")
 
         # Подготовка параметров запроса
@@ -75,7 +98,7 @@ class RobokassaService:
         }
         params.update(shp_params)
 
-        logger.info(f"All request params: {params}")
+        logger.debug(f"All request params: {params}")
 
         # Формирование URL
         base_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
@@ -86,12 +109,16 @@ class RobokassaService:
 
         # Запись в файл для дополнительной отладки
         try:
-            with open('/tmp/robokassa_debug.log', 'a') as f:
+            log_path = os.path.join(log_dir, 'payment_urls.log')
+            with open(log_path, 'a') as f:
                 f.write(f"\n\nTime: {datetime.now()}\n")
+                f.write(f"MerchantLogin: {merchant_login}\n")
                 f.write(f"Payment ID: {payment.invoice_id}\n")
                 f.write(f"Amount: {amount_str}\n")
+                f.write(f"Signature String: {signature_value}\n")
                 f.write(f"Signature: {signature}\n")
                 f.write(f"URL: {final_url}\n")
+            logger.debug(f"Данные платежа записаны в {log_path}")
         except Exception as e:
             logger.error(f"Error writing to log file: {e}")
 
@@ -111,6 +138,7 @@ class RobokassaService:
 
         logger.info(f"Verifying signature. OutSum: {out_sum}, InvId: {inv_id}")
         logger.info(f"Received signature: {received_signature}")
+        logger.info(f"Using password2: {password[:3]}...{password[-3:]}")
 
         # Проверка наличия обязательных параметров
         if not all([out_sum, inv_id, received_signature]):
@@ -139,6 +167,7 @@ class RobokassaService:
 
         calculated_signature = hashlib.md5(signature_string.encode('utf-8')).hexdigest().lower()
         logger.info(f"Calculated signature: {calculated_signature}")
+        logger.info(f"Received signature: {received_signature.lower()}")
 
         # Сравниваем подписи без учета регистра
         result = calculated_signature == received_signature.lower()
