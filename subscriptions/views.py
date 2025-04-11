@@ -324,16 +324,16 @@ def payment_success(request):
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-            .success { color: green; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            body {{ font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }}
+            .success {{ color: green; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
         </style>
     </head>
     <body>
         <div class="container">
             <h1 class="success">Платеж успешно завершен!</h1>
             <p>Спасибо за ваш заказ. Ваша подписка активирована.</p>
-            <p>Номер заказа: {}</p>
+            <p>Номер заказа: {0}</p>
             <p><a href="https://psgamezz.ru/">Вернуться на главную</a></p>
         </div>
     </body>
@@ -368,9 +368,9 @@ def payment_fail(request):
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-            .error { color: #cc0000; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            body {{ font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }}
+            .error {{ color: #cc0000; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
         </style>
     </head>
     <body>
