@@ -59,8 +59,23 @@ class RobokassaService:
         amount_str = f"{float(amount):.2f}".replace(',', '.')
         logger.info(f"Formatted OutSum: {amount_str}")
 
-        signature_value = f"{merchant_login}:{amount_str}:{invoice_id}:{password}"
-        logger.info(f"Base signature string: {signature_value}")
+        base_signature = f"{merchant_login}:{amount_str}:{invoice_id}:{password}"
+        logger.info(f"Base signature string: {base_signature}")
+
+        shp_params = {
+            'Shp_user_id': payment.user.id,
+            'Shp_subscription_service': payment.subscription_service.id,
+            'Shp_subscription_period': payment.subscription_period.id,
+            'Shp_console_type': payment.console_type.id,
+        }
+
+        sorted_shp_params = sorted(shp_params.items())
+
+        signature_value = base_signature
+        for key, value in sorted_shp_params:
+            signature_value += f":{key}={value}"
+
+        logger.info(f"Full signature string: {signature_value}")
 
         signature = hashlib.md5(signature_value.encode('utf-8')).hexdigest().lower()
         logger.info(f"MD5 hash: {signature}")
@@ -75,12 +90,6 @@ class RobokassaService:
             'Culture': 'ru',
         }
 
-        shp_params = {
-            'Shp_user_id': payment.user.id,
-            'Shp_subscription_service': payment.subscription_service.id,
-            'Shp_subscription_period': payment.subscription_period.id,
-            'Shp_console_type': payment.console_type.id,
-        }
         params.update(shp_params)
 
         logger.debug(f"All request params: {params}")
