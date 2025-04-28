@@ -55,7 +55,7 @@ class SubscriptionContentSerializer(serializers.ModelSerializer):
 class SubscriptionPeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPeriod
-        fields = ['months', 'price']
+        fields = ['id', 'months', 'price']
 
 
 class SubscriptionServiceSerializer(serializers.ModelSerializer):
